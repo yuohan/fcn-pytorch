@@ -84,3 +84,50 @@ class VGG16(nn.Module):
         pool5 = x
 
         return pool3, pool4, pool5
+
+
+class FCN8(nn.Module):
+
+    def __init__(self, n_classes):
+        super(FCN8, self).__init__()
+
+        self.vgg16 = VGG16(pretrained=True)
+
+        self.fc6 = nn.Conv2d(512, 4096, kernel_size=1)
+        self.relu6 = nn.ReLU(inplace=True)
+        self.drop6 = nn.Dropout2d()
+
+        self.fc7 = nn.Conv2d(4096, 4096, kernel_size=1)
+        self.relu7 = nn.ReLU(inplace=True)
+        self.drop7 = nn.Dropout2d()
+
+        self.score_fc7 = nn.Conv2d(4096, n_classes, kernel_size=1)
+        self.score_pool4 = nn.Conv2d(512, n_classes, kernel_size=1)
+        self.score_pool3 = nn.Conv2d(256, n_classes, kernel_size=1)
+
+        self.upscore2x_1 = nn.ConvTranspose2d(n_classes, n_classes, kernel_size=2, stride=2, bias=False)
+        self.upscore2x_2 = nn.ConvTranspose2d(n_classes, n_classes, kernel_size=2, stride=2, bias=False)
+        self.upscore8x = nn.ConvTranspose2d(n_classes, n_classes, kernel_size=8, stride=8, bias=False)
+
+    def forward(self, x):
+
+        pool3, pool4, pool5 = self.vgg16(x)
+
+        x = self.relu6(self.fc6(pool5))
+        x = self.drop6(x)
+
+        x = self.relu7(self.fc7(x))
+        x = self.drop7(x)
+
+        x = self.score_fc7(x)
+        upscore_fc7 = self.upscore2x_1(x)
+
+        score_pool4 = self.score_pool4(pool4)
+        x = upscore_fc7 + score_pool4
+        upscore_pool4 = self.upscore2x_2(x)
+
+        score_pool3 = self.score_pool3(pool3)
+        x = upscore_pool4 + score_pool3
+        x = self.upscore8x(x)
+
+        return x
