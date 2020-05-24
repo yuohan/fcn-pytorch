@@ -10,6 +10,8 @@ class VOC2012Dataset(torch.utils.data.Dataset):
                         'cat','chair','cow','diningtable','dog','horse','motorbike','person',
                         'potted plant','sheep','sofa','train','tv/monitor'])
 
+    ignore_index = 255
+
     def __init__(self, root, split):
 
         self.root = root
@@ -42,4 +44,4 @@ class VOC2012Dataset(torch.utils.data.Dataset):
         label = self.read_label(self.indices[index])
         label = np.array(label)
 
-        return image, label
+        return torch.from_numpy(image).float(), torch.from_numpy(label).long()
