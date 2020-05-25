@@ -2,6 +2,7 @@ import argparse
 from tqdm.auto import tqdm
 import torch
 from torch import optim, nn
+from metrics import Metric
 from datasets import VOC2012Dataset
 from models import FCN8
 
@@ -29,6 +30,7 @@ def validate_epoch(val_loader, model, criterion, epoch, device):
     model.eval()
 
     val_loss = 0
+    metric = Metric(['accuracy', 'mean_iou'], len(val_loader.dataset.classes))
     for image, label in tqdm(val_loader, total=len(val_loader)):
         image = image.to(device)
         label = label.to(device)
@@ -38,17 +40,21 @@ def validate_epoch(val_loader, model, criterion, epoch, device):
         loss = criterion(pred, label) / len(image)
 
         val_loss += loss.item()
+        metric.update(pred.data.cpu().numpy(), label.data.cpu().numpy())
         
-    return val_loss / len(val_loader)
+    metrics = metric.compute()
+    return val_loss / len(val_loader), metrics['accuracy'], metrics['mean_iou']
 
 def train_loop(train_loader, val_loader, model, criterion, optimizer, epochs, device):
 
-    for epoch in range(epochs):
+    for epoch in range(1, epochs+1):
 
+        print (f'epoch {epoch}/{epochs}')
         train_loss = train_epoch(train_loader, model, criterion, optimizer, epoch, device)
-        val_loss = validate_epoch(val_loader, model, criterion, epoch, device)
+        val_loss, acc, mean_iou = validate_epoch(val_loader, model, criterion, epoch, device)
 
-        print (f'epoch {epoch}/{epochs} train loss:{train_loss:.4f} val loss:{val_loss:.4f}')
+        print (f'val_loss: {val_loss:.4f} val_acc: {acc:.4f} val_mean_iou: {mean_iou:.4f}')
+        print ('-'*10)
 
 def main(root, epochs, learning_rate, momentum, weight_decay, use_cuda):
 
