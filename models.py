@@ -126,18 +126,21 @@ def get_upsampling_weight(in_channels, out_channels, kernel_size):
 
 class FCN8(nn.Module):
 
-    def __init__(self, n_classes):
+    def __init__(self, num_classes, pretrained=True):
         super(FCN8, self).__init__()
 
-        self.vgg16 = VGG16(pretrained=True)
+        self.num_classes = num_classes
 
-        self.score_fc7 = nn.Conv2d(4096, n_classes, kernel_size=1)
-        self.score_pool4 = nn.Conv2d(512, n_classes, kernel_size=1)
-        self.score_pool3 = nn.Conv2d(256, n_classes, kernel_size=1)
-
-        self.upscore2x_1 = nn.ConvTranspose2d(n_classes, n_classes, kernel_size=4, stride=2, bias=False)
-        self.upscore2x_2 = nn.ConvTranspose2d(n_classes, n_classes, kernel_size=4, stride=2, bias=False)
-        self.upscore8x = nn.ConvTranspose2d(n_classes, n_classes, kernel_size=16, stride=8, bias=False)
+        # base network
+        self.vgg16 = VGG16(pretrained=pretrained)
+        # conv2d score layers
+        self.score_fc7 = nn.Conv2d(4096, num_classes, kernel_size=1)
+        self.score_pool4 = nn.Conv2d(512, num_classes, kernel_size=1)
+        self.score_pool3 = nn.Conv2d(256, num_classes, kernel_size=1)
+        # conv_transpose2d upsampling layers
+        self.upscore2x_1 = nn.ConvTranspose2d(num_classes, num_classes, kernel_size=4, stride=2, bias=False)
+        self.upscore2x_2 = nn.ConvTranspose2d(num_classes, num_classes, kernel_size=4, stride=2, bias=False)
+        self.upscore8x = nn.ConvTranspose2d(num_classes, num_classes, kernel_size=16, stride=8, bias=False)
 
         # initialize conv2d layer
         for m in [self.score_fc7, self.score_pool4, self.score_pool3]:
@@ -168,3 +171,19 @@ class FCN8(nn.Module):
         upscore_pool3 = self.upscore8x(h)
 
         return self.crop(upscore_pool3, x)
+
+    def save(self, save_path):
+
+        state = {
+            'state_dict': self.state_dict(),
+            'num_classes': self.num_classes
+        }
+        torch.save(state, save_path)
+
+    @classmethod
+    def load(cls, model_path, device):
+
+        state = torch.load(model_path, map_location=device)
+        model = cls(state['num_classes'], pretrained=False).to(device)
+        model.load_state_dict(state['state_dict'])
+        return model

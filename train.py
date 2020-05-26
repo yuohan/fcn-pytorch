@@ -56,15 +56,15 @@ def train_loop(train_loader, val_loader, model, criterion, optimizer, epochs, de
         print (f'val_loss: {val_loss:.4f} val_acc: {acc:.4f} val_mean_iou: {mean_iou:.4f}')
         print ('-'*10)
 
-def main(root, epochs, learning_rate, momentum, weight_decay, use_cuda):
+def main(root_dir, save_path, epochs, learning_rate, momentum, weight_decay, use_cuda):
 
     device = 'cuda' if torch.cuda.is_available() and use_cuda else 'cpu'
 
     # dataset
-    train_dataset = VOC2012Dataset(root, 'train')
+    train_dataset = VOC2012Dataset(root_dir, 'train')
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=1, shuffle=True)
 
-    val_dataset = VOC2012Dataset(root, 'val')
+    val_dataset = VOC2012Dataset(root_dir, 'val')
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=1, shuffle=False)
 
     # models
@@ -78,11 +78,14 @@ def main(root, epochs, learning_rate, momentum, weight_decay, use_cuda):
     criterion = nn.CrossEntropyLoss(ignore_index=ignore_index, reduction='sum')
     train_loop(train_loader, val_loader, model, criterion, optimizer, epochs, device)
 
+    if save_path is not None:
+        model.save(save_path)
+
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Train FCN Model for Image Segmentation')
 
-    parser.add_argument('--root', type=str, default='input/VOCdevkit/VOC2012',
+    parser.add_argument('--root-dir', type=str, default='input/VOCdevkit/VOC2012',
                     help='Root directory of datasets')
     parser.add_argument('--epochs', type=int, default=5,
                     help='Number of Epochs')
@@ -92,7 +95,10 @@ if __name__ == '__main__':
                     help='Momentum of SGD optimizer')
     parser.add_argument('--weight-decay', type=float, default=5e-4,
                     help='Weight decay of SGD optimizer')
+    parser.add_argument('--save-path', type=str, default='models/checkpoint.pth',
+                    help='Model save path')
     parser.add_argument('--use-cuda', action='store_true')
 
     args = parser.parse_args()
-    main(args.root, args.epochs, args.learning_rate, args.momentum, args.weight_decay, args.use_cuda)
+    main(args.root_dir, args.save_path,
+        args.epochs, args.learning_rate, args.momentum, args.weight_decay, args.use_cuda)
