@@ -3,7 +3,7 @@ from tqdm.auto import tqdm
 import torch
 from torch import optim, nn
 from metrics import Metric
-from datasets import VOC2012Dataset
+from datasets import VOC2012Dataset, SBDDataset
 from models import FCN8
 
 def train_epoch(train_loader, model, criterion, optimizer, epoch, device):
@@ -56,15 +56,15 @@ def train_loop(train_loader, val_loader, model, criterion, optimizer, epochs, de
         print (f'val_loss: {val_loss:.4f} val_acc: {acc:.4f} val_mean_iou: {mean_iou:.4f}')
         print ('-'*10)
 
-def main(root_dir, save_path, epochs, learning_rate, momentum, weight_decay, use_cuda):
+def main(voc_root_dir, sbd_root_dir, save_path, epochs, learning_rate, momentum, weight_decay, use_cuda):
 
     device = 'cuda' if torch.cuda.is_available() and use_cuda else 'cpu'
 
     # dataset
-    train_dataset = VOC2012Dataset(root_dir, 'train')
+    train_dataset = SBDDataset(sbd_root_dir, 'train')
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=1, shuffle=True)
 
-    val_dataset = VOC2012Dataset(root_dir, 'val')
+    val_dataset = VOC2012Dataset(voc_root_dir, 'val')
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=1, shuffle=False)
 
     # models
@@ -85,8 +85,10 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Train FCN Model for Image Segmentation')
 
-    parser.add_argument('--root-dir', type=str, default='input/VOCdevkit/VOC2012',
-                    help='Root directory of datasets')
+    parser.add_argument('--voc-root-dir', type=str, default='input/VOCdevkit/VOC2012',
+                    help='Root directory of VOC2012 datasets')
+    parser.add_argument('--sbd-root-dir', type=str, default='input/benchmark_RELEASE/dataset',
+                    help='Root directory of SBD datasets')
     parser.add_argument('--epochs', type=int, default=5,
                     help='Number of Epochs')
     parser.add_argument('--learning-rate', type=float, default=1e-10,
@@ -100,5 +102,5 @@ if __name__ == '__main__':
     parser.add_argument('--use-cuda', action='store_true')
 
     args = parser.parse_args()
-    main(args.root_dir, args.save_path,
+    main(args.voc_root_dir, args.sbd_root_dir, args.save_path,
         args.epochs, args.learning_rate, args.momentum, args.weight_decay, args.use_cuda)

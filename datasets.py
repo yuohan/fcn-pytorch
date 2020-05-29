@@ -1,5 +1,5 @@
 from PIL import Image
-
+import scipy.io
 import numpy as np
 import torch
 
@@ -45,3 +45,22 @@ class VOC2012Dataset(torch.utils.data.Dataset):
         label = np.array(label)
 
         return torch.from_numpy(image).float(), torch.from_numpy(label).long()
+
+# http://www.eecs.berkeley.edu/Research/Projects/CS/vision/grouping/semantic_contours/benchmark.tgz
+class SBDDataset(VOC2012Dataset):
+
+    def read_indices(self, split):
+        indices_file =  f'{self.root}/{split}.txt'
+        with open(indices_file) as f:
+            indices = f.read().splitlines()
+        return indices
+
+    def read_image(self, index):
+        image = Image.open(f'{self.root}/img/{index}.jpg')
+        return image
+
+    def read_label(self, index):
+        mat = scipy.io.loadmat(f'{self.root}/cls/{index}.mat')
+        label = mat['GTcls'][0]['Segmentation'][0]
+        label = Image.fromarray(label)
+        return label
